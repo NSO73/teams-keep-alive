@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <!-- Restated, as this file replaces csc's default manifest: without a level, UAC virtualises. -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <!-- One id for Windows 10 and 11. Without it, Windows reports version 6.2 and keeps the
+       behaviour of older releases. -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+
+  <!-- System aware, not per-monitor: the menu scales once by hand (see Dpi), and per-monitor
+       WinForms needs an app.config this single file does without. -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3"
+               xmlns:ws="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+    <windowsSettings>
+      <ws:dpiAwareness>system</ws:dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>

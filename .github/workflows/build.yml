@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    # vMAJOR.MINOR.PATCH only: build.cmd stamps the version the tag carries.
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    # Not evaluated for tag pushes, so a release always builds.
+    paths-ignore: ['**.md', '**.png', 'LICENSE']
+  # Unfiltered: a filtered-out pull request gets no run, which would block a required check.
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Actions are pinned to commit SHAs, which dependabot.yml keeps current.
+jobs:
+  build:
+    # Ships Visual Studio, whose Roslyn csc build.cmd finds.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      # No git step follows: the token need not outlive the checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test
+        run: build.cmd test
+
+      - name: Build
+        run: if "%GITHUB_REF_TYPE%"=="tag" (build.cmd %GITHUB_REF_NAME:~1%) else (build.cmd)
+
+      - name: Upload executable
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: TeamsKeepAlive
+          path: bin/TeamsKeepAlive.exe
+          if-no-files-found: error
+
+  # A separate job, so write access exists only on a tag, never on a pull request. A pushed tag
+  # only: a manual run on a tag goes through no tag filter.
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      # An attestation naming the commit ties the binary to this repository.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: TeamsKeepAlive
+
+      # Attestations in a private repository need GitHub Enterprise Cloud, or the step errors.
+      - name: Attest provenance
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: TeamsKeepAlive.exe
+
+      # --verify-tag: otherwise gh creates a missing tag on the default branch.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}   # no checkout for gh to infer it from
+        run: |
+          sha256sum TeamsKeepAlive.exe > TeamsKeepAlive.exe.sha256
+          gh release create "$GITHUB_REF_NAME" --verify-tag \
+            TeamsKeepAlive.exe TeamsKeepAlive.exe.sha256 --generate-notes

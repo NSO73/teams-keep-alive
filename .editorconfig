@@ -1,0 +1,11 @@
+# Two spaces everywhere: no editor defaults to that for C#.
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 100

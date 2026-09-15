@@ -1,0 +1,13 @@
+# Moves the commit SHAs build.yml pins, in one monthly pull request for all of them, leaving out
+# any release under a week old, so one withdrawn meanwhile never lands.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
